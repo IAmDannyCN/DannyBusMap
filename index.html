@@ -1,0 +1,225 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <title>DannyBusMap</title>
+    <link rel="icon" href="./img/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="./img/favicon.jpg" type="image/png">
+    <link rel="stylesheet" href="./css/center.css"/> 
+    <style type="text/css">
+       html,body,#container{
+           height:100%;
+       }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+
+<!-- Text Boxes -->
+<div class="input-card input-card-1" style='width:18rem;'>
+    <label style='color:grey'>DannyBusMap V1.0
+        <span style="font-size: 0.85rem;">
+            <a href="https://space.bilibili.com/299444370" target="_blank">(@I_Am_Danny)</a>
+        </span>
+    </label>
+    <div class="input-item">
+            <div class="input-item-prepend"><span class="input-item-text" >线路名称</span></div>
+            <input id='BusLineName' type="text" value='' >
+    </div>
+    <input id="search" type="button" class="btn" value="查询" />
+    <div style="height: 0.5rem"></div>
+    <input id="clear" type="button" class="btn" value="清空" />
+    <div style="height: 0.5rem;"></div>
+    <input id="toggleButton" type="button" class="btn" value="选项" />
+</div>
+<div class="input-card input-card-2" style='width:18rem; display:none'>
+    <label style='color:grey'>颜色选择</label>
+    <div class="input-item">
+            <div class="input-item-prepend"><span class="input-item-text" >色号</span></div>
+            <input id='colorName' type="color" value='#0099FF' >
+            <input id='colorNameText' type="text" value='#0099FF' >
+    </div>
+</div>
+<div class="input-card input-card-3" style='width:18rem; display:none;'>
+    <label style='color:grey'>城市选择</label>
+    <div class="input-item">
+            <div class="input-item-prepend"><span class="input-item-text" >城市</span></div>
+            <input id='CityName' type="text" value='南京' >
+    </div>
+</div>
+
+<!-- Security Code -->
+<script type="text/javascript">
+    window._AMapSecurityConfig = {
+      securityJsCode: "YOUR_SECURITY_CODE",
+    };
+</script>
+
+<!-- Load Map and Process -->
+<script type="text/javascript"
+            src="https://webapi.amap.com/maps?v=2.0&key=YOUR_API_KEY&plugin=AMap.LineSearch"></script>
+<script language="javascript">
+    var map = new AMap.Map("container", {
+        resizeEnable: true,
+        center: [118.797104, 32.058902],//地图中心点
+        zoom: 13 //地图显示的缩放级别
+    });
+    
+    /*公交线路查询*/
+    function lineSearch() {
+        var busLineName = document.getElementById('BusLineName').value;
+        var cityName = document.getElementById('CityName').value;
+        if(!busLineName) return;
+        //实例化公交线路查询类，只取回一条路线
+        var linesearch = new AMap.LineSearch({
+                pageIndex: 1,
+                city: cityName,
+                pageSize: 1,
+                extensions: 'all'
+            });
+        //搜索“536”相关公交线路
+        linesearch.search(busLineName, function(status, result) {
+            //map.clearMap()
+            if (status === 'complete' && result.info === 'OK') {
+                lineSearch_Callback(result);
+            } else {
+                alert(result);
+            }
+        });
+    }
+    /*公交路线查询服务返回数据解析概况*/
+    function lineSearch_Callback(data) {
+        var lineArr = data.lineInfo;
+        var lineNum = data.lineInfo.length;
+        if (lineNum == 0) {
+        } else {
+            for (var i = 0; i < lineNum; i++) {
+                var pathArr = lineArr[i].path;
+                var stops = lineArr[i].via_stops;
+                if (i == 0) //作为示例，只绘制一条线路
+                    drawbusLine(pathArr, stops);
+            
+            }
+        }
+    }
+    /*绘制路线*/
+    function drawbusLine(BusArr, stops) {
+        //绘制乘车的路线
+        var cur_color = document.getElementById('colorName').value;
+        busPolyline = new AMap.Polyline({
+            map: map,
+            path: BusArr,
+            strokeColor: cur_color,//线颜色
+            strokeOpacity: 0.8,//线透明度
+            isOutline:true,
+            outlineColor:'white',
+            strokeWeight: 6//线宽
+        });
+
+        for(let i = 0; i < stops.length; i++) {
+            var circleMarker = new AMap.CircleMarker({
+                center: [stops[i].location.lng, stops[i].location.lat],
+                radius: 4,
+                strokeColor: cur_color,
+                fillColor:'white',
+                strokeWeight: 1.75,
+                strokeOpacity: 1,
+                fillOpacity: 1,
+                bubble: true,
+                cursor: stops[i].name,
+                clickable: true,
+                zIndex: 100,
+            })
+            circleMarker.setMap(map)
+        }
+        // 将 busPolyline 显示在地图中心并自动缩放地图到合适级别。
+        // true表示需要动画过程，[60,200,60,60]表示上下左右避让像素
+        map.setFitView(busPolyline, true, [60,200,60,60]); 
+    }
+
+    function clearAll() {
+        map.clearMap();
+    }
+
+    document.getElementById('search').onclick = lineSearch;
+    document.getElementById('clear').onclick = clearAll;
+
+    document.getElementById('toggleButton').addEventListener('click', function() {
+        let handleList = ['.input-card.input-card-2',
+                          '.input-card.input-card-3'];
+        for(let cardID in handleList)
+        {
+            let cardName = handleList[cardID];
+            console.log(cardName);
+            var inputCard = document.querySelector(cardName);
+            inputCard.style.display = (inputCard.style.display === 'none') ? 'block' : 'none';
+        }
+    });
+
+    function CheckIsColor(bgVal) { // From blog.csdn.net/A_linyuan/article/details/108191740
+        let type = '';
+        if(/^rgb\(/.test(bgVal)) {
+            //如果是rgb开头，200-249，250-255，0-199
+            type = "^[rR][gG][Bb][\(]([\\s]*(2[0-4][0-9]|25[0-5]|[01]?[0-9][0-9]?)[\\s]*,){2}[\\s]*(2[0-4]\\d|25[0-5]|[01]?\\d\\d?)[\\s]*[\)]{1}$";
+        } else if(/^rgba\(/.test(bgVal)) {
+            //如果是rgba开头，判断0-255:200-249，250-255，0-199 判断0-1：0 1 1.0 0.0-0.9
+            type = "^[rR][gG][Bb][Aa][\(]([\\s]*(2[0-4][0-9]|25[0-5]|[01]?[0-9][0-9]?)[\\s]*,){3}[\\s]*(1|1.0|0|0.[0-9])[\\s]*[\)]{1}$";
+        } else if (/^#/.test(bgVal)) {
+            //六位或者三位
+            type = "^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$"
+        } else if (/^hsl\(/.test(bgVal)) {
+            //判断0-360 判断0-100%(0可以没有百分号)
+            type = "^[hH][Ss][Ll][\(]([\\s]*(2[0-9][0-9]|360｜3[0-5][0-9]|[01]?[0-9][0-9]?)[\\s]*,)([\\s]*((100|[0-9][0-9]?)%|0)[\\s]*,)([\\s]*((100|[0-9][0-9]?)%|0)[\\s]*)[\)]$";
+        } else if (/^hsla\(/.test(bgVal)) {
+            type = "^[hH][Ss][Ll][Aa][\(]([\\s]*(2[0-9][0-9]|360｜3[0-5][0-9]|[01]?[0-9][0-9]?)[\\s]*,)([\\s]*((100|[0-9][0-9]?)%|0)[\\s]*,){2}([\\s]*(1|1.0|0|0.[0-9])[\\s]*)[\)]$";
+        }
+        let re = new RegExp(type);
+        if (bgVal.match(re) == null){
+            return "invalid"
+        } else {
+            return "valid"
+        }
+    }
+    function colorToHex(colorStr) { // From GPT-4
+        var div = document.createElement("div");
+        div.style.color = colorStr;
+        document.body.appendChild(div);
+
+        // 使用getComputedStyle获取颜色的RGB表示，然后转换为十六进制
+        var rgb = window.getComputedStyle(div).color;
+        document.body.removeChild(div);
+
+        // 此处转换RGB到十六进制
+        var rgbArray = rgb.match(/\d+/g).map(function(value) {
+            return parseInt(value).toString(16).padStart(2, '0');
+        });
+
+        if (rgbArray.length === 3) {
+            return "#" + rgbArray.join('');
+        } else {
+            return null; // 不是有效的RGB颜色，转换失败
+        }
+    }
+
+    var colorPicker = document.getElementById('colorName');
+    var colorText = document.getElementById('colorNameText');
+    colorPicker.addEventListener('change', function() {
+        colorText.value = colorPicker.value;
+    });
+    colorText.addEventListener('change', function() {
+        // 验证颜色值是否有效
+        if (CheckIsColor(colorText.value) === "valid") {
+            colorText.value = colorToHex(colorText.value);
+            colorPicker.value = colorText.value;
+            console.log(colorPicker.value, colorText.value)
+        } else {
+            alert('请输入有效的颜色值。');
+            colorText.value = colorPicker.value;
+        }
+    });
+
+</script>
+</body>
+</html>
